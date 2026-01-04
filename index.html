@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CLUEDO V4 STABLE</title>
+    <title>CLUEDO V6 LOGIQUE</title>
     <style>
         :root {
             --bg: #121212;
@@ -19,74 +19,30 @@
             --solution-bg: #00e676;
         }
 
-        body {
-            font-family: 'Segoe UI', Roboto, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-            user-select: none;
-        }
+        body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; user-select: none; }
 
-        /* --- NAV --- */
         nav { display: flex; background: var(--surface); z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
         nav button { flex: 1; padding: 15px; background: none; border: none; color: #888; font-weight: bold; font-size: 0.9rem; border-bottom: 3px solid transparent; }
         nav button.active { color: var(--secondary); border-bottom: 3px solid var(--secondary); }
 
-        /* --- PAGES --- */
         .page { flex: 1; display: none; overflow-y: auto; padding-bottom: 50px; }
         .page.active { display: block; }
 
-        /* --- GRID --- */
         .table-container { overflow-x: auto; width: 100%; }
         table { border-collapse: collapse; width: 100%; }
-        th, td {
-            border: 1px solid var(--grid-line);
-            padding: 8px 4px;
-            text-align: center;
-            font-size: 0.8rem;
-            white-space: nowrap;
-            height: 40px;
-            min-width: 40px;
-        }
+        th, td { border: 1px solid var(--grid-line); padding: 8px 4px; text-align: center; font-size: 0.8rem; white-space: nowrap; height: 40px; min-width: 40px; }
         
-        /* Sticky Headers & Columns */
-        td:first-child, th:first-child {
-            position: sticky;
-            left: 0;
-            background: var(--surface);
-            z-index: 10;
-            width: 120px;
-            text-align: left;
-            padding-left: 8px;
-            border-right: 2px solid var(--grid-line);
-            font-weight: bold;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+        td:first-child, th:first-child { position: sticky; left: 0; background: var(--surface); z-index: 10; width: 120px; text-align: left; padding-left: 8px; border-right: 2px solid var(--grid-line); font-weight: bold; overflow: hidden; text-overflow: ellipsis; }
         thead th { position: sticky; top: 0; background: var(--surface); z-index: 20; }
         
-        /* STATES */
         td.state-no { background-color: var(--no-col); color: #777; }
         td.state-yes { background-color: var(--yes-col); color: #80cbc4; font-weight: bold; font-size:1.1rem; }
         td.state-maybe { background-color: var(--maybe-col); color: #64b5f6; font-weight: bold; }
         .eliminated-row { opacity: 0.3; }
 
-        /* --- FIXE VERT FLUO --- */
-        /* On force le vert à passer par dessus la colonne figée avec z-index */
-        tr.solution-found td:first-child { 
-            background-color: var(--solution-bg) !important; 
-            color: black !important; 
-            font-weight: 900 !important;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
-            z-index: 15 !important; /* IMPORTANT POUR LA VISIBILITÉ */
-        }
+        /* FIXE VERT FLUO */
+        tr.solution-found td:first-child { background-color: var(--solution-bg) !important; color: black !important; font-weight: 900 !important; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); z-index: 15 !important; }
 
-        /* --- CONFIG --- */
         .container { padding: 20px; max-width: 600px; margin: 0 auto; }
         h3 { color: var(--secondary); border-bottom: 1px solid #333; padding-bottom: 5px; margin-top: 25px; }
         label { display: block; margin-bottom: 5px; color: #aaa; font-size: 0.9rem; }
@@ -94,13 +50,13 @@
         button.action-btn { width: 100%; padding: 15px; background: var(--secondary); color: black; border: none; border-radius: 4px; font-weight: bold; font-size: 1rem; margin-top: 10px; }
         button.danger-btn { background: #cf6679; color: white; margin-top: 30px; }
 
-        /* --- SHERLOCK --- */
         .clue-card { background: var(--surface); padding: 15px; margin-bottom: 10px; border-radius: 8px; border-left: 4px solid #555; position: relative; }
         .clue-card.solved { border-left-color: var(--secondary); background: #00251a; }
         .clue-items { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
         .clue-tag { background: #333; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; }
         .clue-tag.eliminated { text-decoration: line-through; opacity: 0.5; }
         .clue-tag.found { background: var(--secondary); color: black; font-weight: bold; }
+        .clue-tag.maybe-yes { border: 1px solid var(--secondary); color: var(--secondary); } /* Juste pour info visuelle */
         .del-clue { position: absolute; top: 5px; right: 10px; background: none; border: none; color: #666; font-size: 1.5rem; padding: 0 10px; }
     </style>
 </head>
@@ -120,7 +76,7 @@
         </table>
     </div>
     <div style="text-align: center; padding: 20px; color: #555; font-size: 0.8rem;">
-        Appuyez : VIDE -> <span style="color:#777; font-weight:bold;">-</span> -> <span style="color:var(--secondary); font-weight:bold;">X</span> -> <span style="color:#64b5f6; font-weight:bold;">?</span>
+        Cycle : VIDE -> <span style="color:#777; font-weight:bold;">-</span> -> <span style="color:var(--secondary); font-weight:bold;">X</span> -> <span style="color:#64b5f6; font-weight:bold;">?</span>
     </div>
 </div>
 
@@ -158,7 +114,6 @@
 </div>
 
 <script>
-    // --- DEFAULTS ---
     const DEFAULT_CONFIG = {
         playerCount: 5, 
         playerNames: ["J2", "J3", "J4", "J5", "J6"], 
@@ -205,7 +160,7 @@
         const parseList = (id) => document.getElementById(id).value.split("\n").map(s => s.trim()).filter(s => s !== "");
         appConfig.playerCount = count; appConfig.playerNames = newNames;
         appConfig.suspects = parseList("cfg-suspects"); appConfig.weapons = parseList("cfg-weapons"); appConfig.places = parseList("cfg-places");
-        localStorage.setItem("cluedo_config_v4fix", JSON.stringify(appConfig));
+        localStorage.setItem("cluedo_config_v6", JSON.stringify(appConfig));
         alert("Sauvegardé !"); renderTable(); updateSherlockUI(); switchTab('grid');
     }
 
@@ -266,12 +221,9 @@
                 else { candidates.push({idx: idx, confirmedNo: (noCount === totalPlayers)}); }
             });
 
-            // LOGIQUE VERT FLUO
             if (candidates.length === 1) {
-                // S'il ne reste qu'un candidat dans la catégorie -> VERT
                 document.getElementById(`row-${type}${candidates[0].idx}`).classList.add("solution-found");
             } else {
-                // Sinon, on marque vert ceux qui sont confirmés NON par tout le monde (donc dans l'enveloppe)
                 candidates.forEach(c => {
                     if(c.confirmedNo) document.getElementById(`row-${type}${c.idx}`).classList.add("solution-found");
                 });
@@ -288,39 +240,57 @@
         fill("s-suspect", appConfig.suspects, "s"); fill("s-weapon", appConfig.weapons, "w"); fill("s-place", appConfig.places, "p");
         renderCluesList();
     }
+
     function addClue() {
         let pIdx = parseInt(document.getElementById("s-player").value);
         clues.push({ pIdx: pIdx, cards: [document.getElementById("s-suspect").value, document.getElementById("s-weapon").value, document.getElementById("s-place").value], id: Date.now() });
         saveGameData(); renderCluesList();
     }
+
     function renderCluesList() {
         const list = document.getElementById("clueList"); list.innerHTML = "";
         clues.slice().reverse().forEach(clue => {
             let pName = appConfig.playerNames[clue.pIdx - 1] || `Inconnu`;
             const getName = (code) => { let idx = parseInt(code.substring(1)); if(code[0]==='s') return appConfig.suspects[idx]; if(code[0]==='w') return appConfig.weapons[idx]; return appConfig.places[idx]; };
+            
             let statuses = clue.cards.map(code => gridData[`p${clue.pIdx}_${code}`] || 0);
+            
+            // LOGIQUE CORRIGÉE : On ne déduit que si 2 cartes sont éliminées (== 1)
+            let eliminatedCount = statuses.filter(s => s === 1).length;
             let foundIndex = -1;
-            if(statuses.filter(s => s === 1).length === 2) foundIndex = statuses.findIndex(s => s === 0);
-            if(statuses.findIndex(s => s === 2) !== -1) foundIndex = statuses.findIndex(s => s === 2);
+            
+            if(eliminatedCount === 2) {
+                // S'il ne reste qu'une seule carte possible (qu'elle soit Vide, ? ou Oui), c'est elle.
+                foundIndex = statuses.findIndex(s => s !== 1);
+            }
 
             let div = document.createElement("div"); div.className = "clue-card" + (foundIndex !== -1 ? " solved" : "");
             let html = `<div><strong>${pName}</strong> a montré :</div><div class="clue-items">`;
-            clue.cards.forEach((code, i) => { let cls = "clue-tag"; if(statuses[i]===1) cls+=" eliminated"; if(i===foundIndex) cls+=" found"; html += `<span class="${cls}">${getName(code)}</span>`; });
+            
+            clue.cards.forEach((code, i) => { 
+                let cls = "clue-tag"; 
+                if(statuses[i]===1) cls+=" eliminated"; 
+                if(i===foundIndex) cls+=" found"; 
+                else if(statuses[i]===2) cls+=" maybe-yes"; // Petit indicateur si on sait qu'il l'a
+                html += `<span class="${cls}">${getName(code)}</span>`; 
+            });
+            
             html += `</div><button class="del-clue" onclick="delClue(${clue.id})">×</button>`;
             if(foundIndex !== -1) html += `<div style="margin-top:5px; color:var(--secondary); font-weight:bold;">DÉDUCTION : ${getName(clue.cards[foundIndex])} !</div>`;
             div.innerHTML = html; list.appendChild(div);
         });
     }
+
     function delClue(id) { clues = clues.filter(c => c.id !== id); saveGameData(); renderCluesList(); }
 
     // --- STORAGE ---
     function loadData() {
-        let c = localStorage.getItem("cluedo_config_v4fix"); if (c) appConfig = JSON.parse(c); else appConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
-        let g = localStorage.getItem("cluedo_grid_v4fix"); if (g) gridData = JSON.parse(g);
-        let cl = localStorage.getItem("cluedo_clues_v4fix"); if (cl) clues = JSON.parse(cl);
+        let c = localStorage.getItem("cluedo_config_v6"); if (c) appConfig = JSON.parse(c); else appConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+        let g = localStorage.getItem("cluedo_grid_v6"); if (g) gridData = JSON.parse(g);
+        let cl = localStorage.getItem("cluedo_clues_v6"); if (cl) clues = JSON.parse(cl);
     }
-    function saveGameData() { localStorage.setItem("cluedo_grid_v4fix", JSON.stringify(gridData)); localStorage.setItem("cluedo_clues_v4fix", JSON.stringify(clues)); }
-    function fullReset() { if(confirm("Tout effacer ?")) { localStorage.removeItem("cluedo_config_v4fix"); localStorage.removeItem("cluedo_grid_v4fix"); localStorage.removeItem("cluedo_clues_v4fix"); location.reload(); } }
+    function saveGameData() { localStorage.setItem("cluedo_grid_v6", JSON.stringify(gridData)); localStorage.setItem("cluedo_clues_v6", JSON.stringify(clues)); }
+    function fullReset() { if(confirm("Tout effacer ?")) { localStorage.removeItem("cluedo_config_v6"); localStorage.removeItem("cluedo_grid_v6"); localStorage.removeItem("cluedo_clues_v6"); location.reload(); } }
     function switchTab(t) { document.querySelectorAll('.page').forEach(e=>e.classList.remove('active')); document.querySelectorAll('nav button').forEach(e=>e.classList.remove('active')); document.getElementById(`page-${t}`).classList.add('active'); document.getElementById(`btn-${t}`).classList.add('active'); }
 
     init();
