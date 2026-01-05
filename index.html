@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CLUEDO V6 LOGIQUE</title>
+    <title>CLUEDO V7 CONFORT</title>
     <style>
         :root {
             --bg: #121212;
@@ -25,12 +25,12 @@
         nav button { flex: 1; padding: 15px; background: none; border: none; color: #888; font-weight: bold; font-size: 0.9rem; border-bottom: 3px solid transparent; }
         nav button.active { color: var(--secondary); border-bottom: 3px solid var(--secondary); }
 
-        .page { flex: 1; display: none; overflow-y: auto; padding-bottom: 50px; }
+        .page { flex: 1; display: none; overflow-y: auto; padding-bottom: 80px; } /* Espace pour le bouton flottant */
         .page.active { display: block; }
 
-        .table-container { overflow-x: auto; width: 100%; }
+        .table-container { overflow-x: auto; width: 100%; padding-bottom: 50px; }
         table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid var(--grid-line); padding: 8px 4px; text-align: center; font-size: 0.8rem; white-space: nowrap; height: 40px; min-width: 40px; }
+        th, td { border: 1px solid var(--grid-line); padding: 8px 4px; text-align: center; font-size: 0.8rem; white-space: nowrap; height: 42px; min-width: 42px; touch-action: manipulation; }
         
         td:first-child, th:first-child { position: sticky; left: 0; background: var(--surface); z-index: 10; width: 120px; text-align: left; padding-left: 8px; border-right: 2px solid var(--grid-line); font-weight: bold; overflow: hidden; text-overflow: ellipsis; }
         thead th { position: sticky; top: 0; background: var(--surface); z-index: 20; }
@@ -39,9 +39,18 @@
         td.state-yes { background-color: var(--yes-col); color: #80cbc4; font-weight: bold; font-size:1.1rem; }
         td.state-maybe { background-color: var(--maybe-col); color: #64b5f6; font-weight: bold; }
         .eliminated-row { opacity: 0.3; }
-
-        /* FIXE VERT FLUO */
         tr.solution-found td:first-child { background-color: var(--solution-bg) !important; color: black !important; font-weight: 900 !important; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); z-index: 15 !important; }
+
+        /* BOUTON UNDO FLOTTANT */
+        .fab-undo {
+            position: fixed; bottom: 20px; right: 20px;
+            width: 60px; height: 60px; border-radius: 50%;
+            background-color: var(--secondary); box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; color: black; border: none; z-index: 1000; cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .fab-undo:active { transform: scale(0.9); }
 
         .container { padding: 20px; max-width: 600px; margin: 0 auto; }
         h3 { color: var(--secondary); border-bottom: 1px solid #333; padding-bottom: 5px; margin-top: 25px; }
@@ -56,7 +65,7 @@
         .clue-tag { background: #333; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; }
         .clue-tag.eliminated { text-decoration: line-through; opacity: 0.5; }
         .clue-tag.found { background: var(--secondary); color: black; font-weight: bold; }
-        .clue-tag.maybe-yes { border: 1px solid var(--secondary); color: var(--secondary); } /* Juste pour info visuelle */
+        .clue-tag.maybe-yes { border: 1px solid var(--secondary); color: var(--secondary); }
         .del-clue { position: absolute; top: 5px; right: 10px; background: none; border: none; color: #666; font-size: 1.5rem; padding: 0 10px; }
     </style>
 </head>
@@ -68,6 +77,8 @@
     <button id="btn-config" onclick="switchTab('config')">CONFIG</button>
 </nav>
 
+<button class="fab-undo" onclick="undoLastAction()" title="Annuler la dernière action">↩️</button>
+
 <div id="page-grid" class="page active">
     <div class="table-container">
         <table id="mainTable">
@@ -75,7 +86,8 @@
             <tbody id="tableBody"></tbody>
         </table>
     </div>
-    <div style="text-align: center; padding: 20px; color: #555; font-size: 0.8rem;">
+    <div style="text-align: center; padding: 10px; color: #555; font-size: 0.75rem;">
+        Clic court : Changer • <strong>Appui long : Effacer</strong><br>
         Cycle : VIDE -> <span style="color:#777; font-weight:bold;">-</span> -> <span style="color:var(--secondary); font-weight:bold;">X</span> -> <span style="color:#64b5f6; font-weight:bold;">?</span>
     </div>
 </div>
@@ -125,6 +137,7 @@
     let appConfig = {};
     let gridData = {}; 
     let clues = [];
+    let historyStack = []; // Historique pour le Annuler
 
     function init() {
         loadData();
@@ -132,6 +145,23 @@
         renderTable();
         updateSherlockUI();
         updateMath();
+    }
+
+    // --- HISTORIQUE (UNDO) ---
+    function pushHistory() {
+        if(historyStack.length > 20) historyStack.shift(); // Garde les 20 derniers coups
+        historyStack.push(JSON.stringify({ grid: gridData, clues: clues }));
+    }
+
+    function undoLastAction() {
+        if(historyStack.length === 0) return alert("Rien à annuler !");
+        let lastState = JSON.parse(historyStack.pop());
+        gridData = lastState.grid;
+        clues = lastState.clues;
+        saveGameData(false); // false = ne pas effacer l'historique
+        renderTable();
+        renderCluesList();
+        updateMath(); // Mettre à jour le vert fluo
     }
 
     // --- CONFIG ---
@@ -160,7 +190,7 @@
         const parseList = (id) => document.getElementById(id).value.split("\n").map(s => s.trim()).filter(s => s !== "");
         appConfig.playerCount = count; appConfig.playerNames = newNames;
         appConfig.suspects = parseList("cfg-suspects"); appConfig.weapons = parseList("cfg-weapons"); appConfig.places = parseList("cfg-places");
-        localStorage.setItem("cluedo_config_v6", JSON.stringify(appConfig));
+        localStorage.setItem("cluedo_config_v7", JSON.stringify(appConfig));
         alert("Sauvegardé !"); renderTable(); updateSherlockUI(); switchTab('grid');
     }
 
@@ -177,8 +207,12 @@
                 let tr = document.createElement("tr"); tr.id = `row-${typePrefix}-${index}`;
                 let tdName = document.createElement("td"); tdName.innerText = item; tr.appendChild(tdName);
                 allPlayers.forEach((p, pIndex) => {
-                    let td = document.createElement("td"); let key = `p${pIndex}_${typePrefix}${index}`;
-                    td.onclick = () => toggleCell(key, pIndex, typePrefix, index);
+                    let td = document.createElement("td"); 
+                    let key = `p${pIndex}_${typePrefix}${index}`;
+                    
+                    // Gestion Appui Long vs Clic Court
+                    addCellInteraction(td, key, pIndex, typePrefix, index);
+                    
                     let state = gridData[key] || 0;
                     if(state === 1) { td.className = "state-no"; td.innerText = "-"; }
                     else if(state === 2) { td.className = "state-yes"; td.innerText = "X"; }
@@ -192,14 +226,62 @@
         updateMath();
     }
 
-    function toggleCell(key, pIndex, typePrefix, itemIndex) {
-        let current = gridData[key] || 0; let next = (current + 1) % 4; gridData[key] = next;
+    // --- GESTION APPUI LONG (ERASER) ---
+    function addCellInteraction(element, key, pIndex, typePrefix, itemIndex) {
+        let pressTimer;
+        let isLongPress = false;
+
+        const startPress = (e) => {
+            isLongPress = false;
+            pressTimer = setTimeout(() => {
+                // APPUI LONG DÉTECTÉ -> EFFACER
+                isLongPress = true;
+                if(navigator.vibrate) navigator.vibrate(50); // Petit retour haptique
+                performClear(key);
+            }, 500); // 500ms pour effacer
+        };
+
+        const endPress = (e) => {
+            clearTimeout(pressTimer);
+            if (!isLongPress) {
+                // CLIC COURT -> BASCULER
+                // On empêche le double déclenchement si c'est un touch event
+                if(e.type === 'click' && e.detail === 0) return; // ignore phantom clicks
+                performToggle(key, pIndex, typePrefix, itemIndex);
+            }
+        };
+
+        // Support souris et tactile
+        element.onmousedown = startPress;
+        element.onmouseup = endPress;
+        element.ontouchstart = startPress;
+        element.ontouchend = (e) => {
+            e.preventDefault(); // Empêche le clic fantôme après le touch
+            endPress(e);
+        };
+    }
+
+    function performClear(key) {
+        pushHistory();
+        gridData[key] = 0; // Remise à zéro
+        saveGameData();
+        renderTable();
+        renderCluesList();
+    }
+
+    function performToggle(key, pIndex, typePrefix, itemIndex) {
+        pushHistory();
+        let current = gridData[key] || 0; 
+        let next = (current + 1) % 4; 
+        gridData[key] = next;
+
         if (next === 2) {
             let totalPlayers = appConfig.playerCount + 1;
             for(let i=0; i<totalPlayers; i++) { if(i !== pIndex) { let oKey = `p${i}_${typePrefix}${itemIndex}`; if((gridData[oKey] || 0) !== 2) gridData[oKey] = 1; } }
-            renderTable();
-        } else { renderTable(); }
-        saveGameData(); renderCluesList();
+        }
+        saveGameData();
+        renderTable();
+        renderCluesList();
     }
 
     function updateMath() {
@@ -242,6 +324,7 @@
     }
 
     function addClue() {
+        pushHistory(); // Sauvegarde avant ajout
         let pIdx = parseInt(document.getElementById("s-player").value);
         clues.push({ pIdx: pIdx, cards: [document.getElementById("s-suspect").value, document.getElementById("s-weapon").value, document.getElementById("s-place").value], id: Date.now() });
         saveGameData(); renderCluesList();
@@ -252,45 +335,42 @@
         clues.slice().reverse().forEach(clue => {
             let pName = appConfig.playerNames[clue.pIdx - 1] || `Inconnu`;
             const getName = (code) => { let idx = parseInt(code.substring(1)); if(code[0]==='s') return appConfig.suspects[idx]; if(code[0]==='w') return appConfig.weapons[idx]; return appConfig.places[idx]; };
-            
             let statuses = clue.cards.map(code => gridData[`p${clue.pIdx}_${code}`] || 0);
             
-            // LOGIQUE CORRIGÉE : On ne déduit que si 2 cartes sont éliminées (== 1)
+            // Logique déduction stricte : il faut 2 éliminés
             let eliminatedCount = statuses.filter(s => s === 1).length;
             let foundIndex = -1;
-            
-            if(eliminatedCount === 2) {
-                // S'il ne reste qu'une seule carte possible (qu'elle soit Vide, ? ou Oui), c'est elle.
-                foundIndex = statuses.findIndex(s => s !== 1);
-            }
+            if(eliminatedCount === 2) foundIndex = statuses.findIndex(s => s !== 1);
 
             let div = document.createElement("div"); div.className = "clue-card" + (foundIndex !== -1 ? " solved" : "");
             let html = `<div><strong>${pName}</strong> a montré :</div><div class="clue-items">`;
-            
             clue.cards.forEach((code, i) => { 
                 let cls = "clue-tag"; 
                 if(statuses[i]===1) cls+=" eliminated"; 
                 if(i===foundIndex) cls+=" found"; 
-                else if(statuses[i]===2) cls+=" maybe-yes"; // Petit indicateur si on sait qu'il l'a
+                else if(statuses[i]===2) cls+=" maybe-yes"; 
                 html += `<span class="${cls}">${getName(code)}</span>`; 
             });
-            
             html += `</div><button class="del-clue" onclick="delClue(${clue.id})">×</button>`;
             if(foundIndex !== -1) html += `<div style="margin-top:5px; color:var(--secondary); font-weight:bold;">DÉDUCTION : ${getName(clue.cards[foundIndex])} !</div>`;
             div.innerHTML = html; list.appendChild(div);
         });
     }
 
-    function delClue(id) { clues = clues.filter(c => c.id !== id); saveGameData(); renderCluesList(); }
+    function delClue(id) { pushHistory(); clues = clues.filter(c => c.id !== id); saveGameData(); renderCluesList(); }
 
     // --- STORAGE ---
     function loadData() {
-        let c = localStorage.getItem("cluedo_config_v6"); if (c) appConfig = JSON.parse(c); else appConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
-        let g = localStorage.getItem("cluedo_grid_v6"); if (g) gridData = JSON.parse(g);
-        let cl = localStorage.getItem("cluedo_clues_v6"); if (cl) clues = JSON.parse(cl);
+        let c = localStorage.getItem("cluedo_config_v7"); if (c) appConfig = JSON.parse(c); else appConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+        let g = localStorage.getItem("cluedo_grid_v7"); if (g) gridData = JSON.parse(g);
+        let cl = localStorage.getItem("cluedo_clues_v7"); if (cl) clues = JSON.parse(cl);
     }
-    function saveGameData() { localStorage.setItem("cluedo_grid_v6", JSON.stringify(gridData)); localStorage.setItem("cluedo_clues_v6", JSON.stringify(clues)); }
-    function fullReset() { if(confirm("Tout effacer ?")) { localStorage.removeItem("cluedo_config_v6"); localStorage.removeItem("cluedo_grid_v6"); localStorage.removeItem("cluedo_clues_v6"); location.reload(); } }
+    function saveGameData(clearHistory = false) { 
+        localStorage.setItem("cluedo_grid_v7", JSON.stringify(gridData)); 
+        localStorage.setItem("cluedo_clues_v7", JSON.stringify(clues));
+        if(clearHistory) historyStack = []; 
+    }
+    function fullReset() { if(confirm("Tout effacer ?")) { localStorage.removeItem("cluedo_config_v7"); localStorage.removeItem("cluedo_grid_v7"); localStorage.removeItem("cluedo_clues_v7"); location.reload(); } }
     function switchTab(t) { document.querySelectorAll('.page').forEach(e=>e.classList.remove('active')); document.querySelectorAll('nav button').forEach(e=>e.classList.remove('active')); document.getElementById(`page-${t}`).classList.add('active'); document.getElementById(`btn-${t}`).classList.add('active'); }
 
     init();
